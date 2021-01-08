@@ -36,14 +36,14 @@ def equally_divide_patches(img, divide_num):
     return patches
 
 def create_pos_pair(patches):
-    idx = random.randint(0, len(patches))
+    idx = random.randint(0, len(patches)-1)
     img1 = patches[idx]
     img2 = patches[idx]
     label = np.array([1])
     return img1, img2, label
 
 def create_neg_pair(patches):
-    idx = random.sample(range(0, len(patches)), k=2)
+    idx = random.sample(range(0, len(patches)-1), k=2)
     img1 = patches[idx[0]]
     img2 = patches[idx[1]]
     label = np.array([0])
