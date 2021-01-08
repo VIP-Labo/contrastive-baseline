@@ -16,7 +16,6 @@ import torch.utils.data as data
 import torchvision.transforms.functional as F
 from torchvision import transforms
 
-
 random.seed(765)
 
 def equally_divide_patches(img, divide_num):
@@ -71,24 +70,27 @@ class SpatialDataset(data.Dataset):
 
         if aug:
             self.aug = transforms.Compose([
-                transforms.RandomCrop(self.c_size),
+                transforms.CenterCrop(self.c_size),
                 transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
                 transforms.RandomGrayscale(p=0.2),
                 transforms.RandomApply([GaussianBlur([.1, 2.])], p=0.5),
                 transforms.RandomHorizontalFlip()
             ])
         else:
-            self.aug = transforms.RandomCrop(self.c_size)
+            self.aug = transforms.CenterCrop(self.c_size)
 
         self.trans = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
+    def __len__(self):
+        return len(self.im_list)
+
     def __getitem__(self, index):
         img_path = self.im_list[index]
         img = Image.open(img_path).convert('RGB')
-        patches = equally_divide_patches(img, self.divide_num)
+        patches = equally_divide_patches(img, self.d_num)
 
         if random.random() > 0.5:
             img1, img2, label = create_pos_pair(patches)
@@ -100,4 +102,7 @@ class SpatialDataset(data.Dataset):
 
         label = torch.from_numpy(label).long()
 
-        return self.trans(img1), self.trans(img2), label
+        img1 = self.trans(img1)
+        img2 = self.trans(img2)
+
+        return img1, img2, label

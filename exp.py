@@ -7,7 +7,7 @@ import random
 model = torchvision.models.__dict__['vgg19']()
 print(model)
 
-img = torch.rand(1,3,128,128)
+img = torch.rand(1,3,256,256)
 out = model.features(img)
 print(out.size())
 
