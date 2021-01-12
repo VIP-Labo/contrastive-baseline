@@ -11,9 +11,14 @@ def parse_args():
                         help='training data directory')
     parser.add_argument('--save-dir', default='/mnt/hdd02/contrastive-learn',
                         help='directory to save models.')
+    parser.add_argument('--cifar10', action='store_true',
+                        help='use cifar10 dataset')
+                        
 
     parser.add_argument('--arch', type=str, default='vgg19',
                         help='the model architecture')
+    parser.add_argument('--simple-model', action='store_true',
+                        help='use simple CNN')
     parser.add_argument('--imagenet', action='store_true',
                         help='use imagenet pre-train model')
     parser.add_argument('--lr', type=float, default=1e-5,
@@ -34,7 +39,7 @@ def parse_args():
                         help='max models num to save ')
     parser.add_argument('--max-epoch', type=int, default=300,
                         help='max training epoch')
-    parser.add_argument('--val-epoch', type=int, default=5,
+    parser.add_argument('--val-epoch', type=int, default=10,
                         help='the num of steps to log training information')
     parser.add_argument('--val-start', type=int, default=0,
                         help='the epoch start to val')
@@ -45,7 +50,7 @@ def parse_args():
     parser.add_argument('--num-workers', type=int, default=8,
                         help='the num of training process')
 
-    parser.add_argument('--crop-size', type=int, default=224,
+    parser.add_argument('--crop-size', type=int, default=256,
                         help='the crop size of the train image')
 
     parser.add_argument('--visual-num', type=int, default=4,
@@ -61,5 +66,3 @@ if __name__ == '__main__':
     trainer = CoTrainer(args)
     trainer.setup()
     trainer.train()
-
-

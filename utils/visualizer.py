@@ -59,5 +59,33 @@ class ImageDisplayer:
             i += 1
         
         plt.tight_layout()
-        output_img_name = '{}_{}.png'.format(prefix, epoch)
+        output_img_name = 'imgs_{}_{}.png'.format(prefix, epoch)
         plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
+        plt.close()
+
+class EmbeddingDisplayer:
+    def __init__(self, args, save_fir):
+
+        self.args = args
+        self.save_dir = save_fir
+        self.cifar10_classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
+              '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
+              '#bcbd22', '#17becf']
+
+    def __call__(self, embeddings, targets, epoch, prefix, xlim=None, ylim=None):
+        embeddings = embeddings.to('cpu').detach().numpy().copy()
+        targets = targets.to('cpu').detach().numpy().copy()
+        plt.figure(figsize=(10,10))
+        for i in range(10):
+            inds = np.where(targets==i)[0]
+            plt.scatter(embeddings[inds,0], embeddings[inds,1], alpha=0.5, color=self.colors[i])
+        if xlim:
+            plt.xlim(xlim[0], xlim[1])
+        if ylim:
+            plt.ylim(ylim[0], ylim[1])
+        plt.legend(self.cifar10_classes)
+        output_img_name = 'emb_{}_{}.png'.format(prefix, epoch)
+        plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
+        plt.close()
+

@@ -3,24 +3,29 @@ import sys
 import time
 import logging
 
+import numpy as np
+
 import torch
 from torch import optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 import torchvision.models as models
+import torchvision.datasets as datasets
 
 from models.siamese_net import SiameseNetwork
 from models.contrastive_loss import ContrastiveLoss
 from utils.trainer import Trainer
-from utils.helper import Save_Handle, AverageMeter, accuracy
-from utils.visualizer import ImageDisplayer
+from utils.helper import Save_Handle, AverageMeter, worker_init_fn
+from utils.visualizer import ImageDisplayer, EmbeddingDisplayer
 from datasets.spatial import SpatialDataset
+from datasets.cifar10 import PosNegCifar10
 
 class CoTrainer(Trainer):
     def setup(self):
         """initialize the datasets, model, loss and optimizer"""
         args = self.args
-        self.vis = ImageDisplayer(args, self.save_dir) 
+        self.vis = ImageDisplayer(args, self.save_dir)
+        self.emb = EmbeddingDisplayer(args, self.save_dir)
         
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -29,19 +34,32 @@ class CoTrainer(Trainer):
         else:
             raise Exception("gpu is not available")
 
-        self.datasets = {x: SpatialDataset(os.path.join(args.data_dir, x),
-                                          args.crop_size,
-                                          args.div_num,
-                                          args.aug) for x in ['train', 'val']}
+        if args.cifar10:
+            # Download and create datasets
+            or_train = datasets.CIFAR10(root="CIFAR10_Dataset", train=True, transform=None, download=True)
+            or_val = datasets.CIFAR10(root="CIFAR10_Dataset", train=False, transform=None, download=True)
+
+            # splits CIFAR10 into two streams
+            # 20% of the images will be used as a stream for positives and negatives
+            # the remaining images are used as anchor images
+
+            self.datasets = {x: PosNegCifar10((or_train if x == 'train' else or_val),
+                                              phase=x) for x in ['train', 'val']}
+        else:
+            self.datasets = {x: SpatialDataset(os.path.join(args.data_dir, x),
+                                            args.crop_size,
+                                            args.div_num,
+                                            args.aug) for x in ['train', 'val']}
 
         self.dataloaders = {x: DataLoader(self.datasets[x],
-                                          batch_size=args.batch_size,
-                                          shuffle=(True if x == 'train' else False),
-                                          num_workers=args.num_workers*self.device_count,
-                                          pin_memory=(True if x == 'train' else False)) for x in ['train', 'val']}
+                                        batch_size=args.batch_size,
+                                        shuffle=(True if x == 'train' else False),
+                                        num_workers=args.num_workers*self.device_count,
+                                        pin_memory=(True if x == 'train' else False),
+                                        worker_init_fn=worker_init_fn) for x in ['train', 'val']}
 
-        print("creating model '{}'".format(args.arch))
-        self.model = SiameseNetwork(models.__dict__[args.arch])
+        #print("creating model '{}'".format(args.arch))
+        self.model = SiameseNetwork(models.__dict__[args.arch], pretrained=args.imagenet, simple_model=args.simple_model)
         self.model.to(self.device)
 
         self.criterion = ContrastiveLoss(args.margin)
@@ -49,10 +67,10 @@ class CoTrainer(Trainer):
 
         self.optimizer = optim.SGD(self.model.parameters(), lr=args.lr, momentum=args.momentum)
 
-        self.scheduler = lr_scheduler.MultiStepLR(self.optimizer, milestones=[20, 40, 60, 80], gamma=0.1)
+        self.scheduler = lr_scheduler.MultiStepLR(self.optimizer, milestones=[40, 80, 120, 160, 200, 250], gamma=0.1)
 
         self.start_epoch = 0
-        self.best_acc = 0.
+        self.best_loss = np.inf
         if args.resume:
             suf = args.resume.rsplit('.', 1)[-1]
             if suf == 'tar':
@@ -77,11 +95,10 @@ class CoTrainer(Trainer):
 
     def train_epoch(self, epoch):
         epoch_loss = AverageMeter()
-        epoch_acc = AverageMeter()
         epoch_start = time.time()
         self.model.train()  # Set model to training mode
 
-        for step, (input1, input2, target) in enumerate(self.dataloaders['train']):
+        for step, (input1, input2, target, label) in enumerate(self.dataloaders['train']):
             input1 = input1.to(self.device)
             input2 = input2.to(self.device)
             target = target.to(self.device)
@@ -94,14 +111,13 @@ class CoTrainer(Trainer):
                 loss.backward()
                 self.optimizer.step()
 
-                epoch_acc = accuracy(epoch_acc, output1, output2, target)
-
             # visualize
             if step == 0:
                 self.vis(epoch, 'train', input1, input2, target)
+                self.emb(output1, label, epoch, 'train')
 
-        logging.info('Epoch {} Train, Loss: {:.2f}, Acc: {:.2f}, Cost {:.1f} sec'
-                     .format(self.epoch, epoch_loss.get_avg(), epoch_acc.get_avg(), time.time()-epoch_start))
+        logging.info('Epoch {} Train, Loss: {:.5f}, Cost {:.1f} sec'
+                     .format(self.epoch, epoch_loss.get_avg(), time.time()-epoch_start))
 
         model_state_dic = self.model.state_dict()
         save_path = os.path.join(self.save_dir, '{}_ckpt.tar'.format(self.epoch))
@@ -116,9 +132,8 @@ class CoTrainer(Trainer):
         epoch_start = time.time()
         self.model.eval()  # Set model to evaluate mode
         epoch_loss = AverageMeter()
-        epoch_acc = AverageMeter()
 
-        for step, (input1, input2, target) in enumerate(self.dataloaders['val']):
+        for step, (input1, input2, target, label) in enumerate(self.dataloaders['val']):
             input1 = input1.to(self.device)
             input2 = input2.to(self.device)
             target = target.to(self.device)
@@ -126,17 +141,17 @@ class CoTrainer(Trainer):
                 output1, output2 = self.model(input1, input2)
                 loss = self.criterion(output1, output2, target)
                 epoch_loss.update(loss.item(), input1.size(0))
-                epoch_acc = accuracy(epoch_acc, output1, output2, target)
 
             # visualize
             if step == 0:
                 self.vis(epoch, 'val', input1, input2, target)
+                self.emb(output1, label, epoch, 'val')
 
-        logging.info('Epoch {} Val, Loss: {:.2f}, Acc: {:.2f}, Cost {:.1f} sec'
-                     .format(self.epoch, epoch_loss.get_avg(), epoch_acc.get_avg(), time.time()-epoch_start))
+        logging.info('Epoch {} Val, Loss: {:.5f}, Cost {:.1f} sec'
+                     .format(self.epoch, epoch_loss.get_avg(), time.time()-epoch_start))
 
         model_state_dic = self.model.state_dict()
-        if self.best_acc < epoch_acc.get_avg():
-            self.best_acc = epoch_acc.get_avg()
-            logging.info("save best acc {:.2f} model epoch {}".format(self.best_acc, self.epoch))
+        if self.best_loss > epoch_loss.get_avg():
+            self.best_loss = epoch_loss.get_avg()
+            logging.info("save min loss {:.2f} model epoch {}".format(self.best_loss, self.epoch))
             torch.save(model_state_dic, os.path.join(self.save_dir, 'best_model.pth'))
