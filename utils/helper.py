@@ -1,5 +1,9 @@
 import os
+import numpy as np
 import torch
+
+def worker_init_fn(worker_id):                                                          
+    np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 class Save_Handle(object):
     """handle the number of """
@@ -41,12 +45,13 @@ class AverageMeter(object):
     def get_count(self):
         return self.count
 
+## cannot use in training
 @torch.no_grad()
 def accuracy(meter, output1, output2, target):
-    """Computes the accuracy overthe  predictions"""
+    """Computes the accuracy overthe predictions"""
 
-    for idx, logit in enumerate([output1, output2]):
-        corrects = (torch.max(logit, 1)[1].data == target.long().data).sum()
+    for logit in [output1, output2]:
+        corrects = (torch.max(logit, 1)[1].data == target.squeeze().long().data).sum()
         accu = float(corrects) / float(target.size()[0])
         meter.update(accu)
 

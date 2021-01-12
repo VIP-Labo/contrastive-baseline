@@ -1,7 +1,7 @@
 # in  : original image
 # out : cropped img1 (anchor)
 #       cropped img2 (compete)
-#       label (positive img1 - img2 : 1, negative img1 - img2 : 0)
+#       target (positive img1 - img2 : 1, negative img1 - img2 : 0)
 
 import os
 from glob import glob
@@ -38,15 +38,15 @@ def create_pos_pair(patches):
     idx = random.randint(0, len(patches)-1)
     img1 = patches[idx]
     img2 = patches[idx]
-    label = np.array([1])
-    return img1, img2, label
+    target = np.array([1])
+    return img1, img2, target
 
 def create_neg_pair(patches):
     idx = random.sample(range(0, len(patches)-1), k=2)
     img1 = patches[idx[0]]
     img2 = patches[idx[1]]
-    label = np.array([0])
-    return img1, img2, label
+    target = np.array([0])
+    return img1, img2, target
 
 class GaussianBlur(object):
     """Gaussian blur augmentation in SimCLR https://arxiv.org/abs/2002.05709"""
@@ -93,16 +93,16 @@ class SpatialDataset(data.Dataset):
         patches = equally_divide_patches(img, self.d_num)
 
         if random.random() > 0.5:
-            img1, img2, label = create_pos_pair(patches)
+            img1, img2, target = create_pos_pair(patches)
         else:
-            img1, img2, label = create_neg_pair(patches)
+            img1, img2, target = create_neg_pair(patches)
 
         img1 = self.aug(img1)
         img2 = self.aug(img2)
 
-        label = torch.from_numpy(label).long()
+        target = torch.from_numpy(target).long()
 
         img1 = self.trans(img1)
         img2 = self.trans(img2)
 
-        return img1, img2, label
+        return img1, img2, target, None
