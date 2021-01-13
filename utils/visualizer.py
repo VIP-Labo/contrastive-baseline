@@ -2,6 +2,8 @@ import os
 import numpy as np
 from PIL import Image
 
+import torch
+
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
@@ -24,6 +26,7 @@ class ImageDisplayer:
         self.save_dir = save_fir
         self.N = args.visual_num
 
+    @torch.no_grad()
     def __call__(self, epoch, prefix, img1, img2, target):
         imgs1 = []
         imgs2 = []
@@ -50,11 +53,11 @@ class ImageDisplayer:
             im2 = Image.fromarray(np.uint8(im2*255))
 
             plt.subplot(self.N, 2, i)
-            plt.title('Positive' if tar == 1 else 'Negative', fontsize=20) 
+            plt.title(tar, fontsize=20) 
             plt.imshow(im1)
             i += 1
             plt.subplot(self.N, 2, i)
-            plt.title('Positive' if tar == 1 else 'Negative', fontsize=20) 
+            plt.title(tar, fontsize=20) 
             plt.imshow(im2)
             i += 1
         
@@ -73,6 +76,7 @@ class EmbeddingDisplayer:
               '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
               '#bcbd22', '#17becf']
 
+    @torch.no_grad()
     def __call__(self, embeddings, targets, epoch, prefix, xlim=None, ylim=None):
         embeddings = embeddings.to('cpu').detach().numpy().copy()
         targets = targets.to('cpu').detach().numpy().copy()
@@ -86,6 +90,23 @@ class EmbeddingDisplayer:
             plt.ylim(ylim[0], ylim[1])
         plt.legend(self.cifar10_classes)
         output_img_name = 'emb_{}_{}.png'.format(prefix, epoch)
+        plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
+        plt.close()
+
+class GraphPloter:
+    def __init__(self, args, save_fir, prefix):
+        self.args = args
+        self.save_dir = save_fir
+        self.epochs = []
+        self.losses = []
+
+    def __call__(self, epoch, loss):
+        self.epochs.append(epoch)
+        self.losses.append(loss)
+        output_img_name = '{}_loss.svg'.format(prefix)
+
+        plt.plot(self.epochs, self.losses)
+        plt.title('Loss')
         plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
         plt.close()
 

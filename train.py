@@ -1,4 +1,5 @@
 from utils.contrastive_trainer import CoTrainer
+from utils.simsiam_trainer import SimSiamTrainer
 import argparse
 import os
 import math
@@ -13,16 +14,21 @@ def parse_args():
                         help='directory to save models.')
     parser.add_argument('--cifar10', action='store_true',
                         help='use cifar10 dataset')
-                        
+
+    parser.add_argument('--SimSiam', action='store_true',
+                        help='try Simple Siamese Net')                 
 
     parser.add_argument('--arch', type=str, default='vgg19',
                         help='the model architecture')
-    parser.add_argument('--simple-model', action='store_true',
-                        help='use simple CNN')
-    parser.add_argument('--imagenet', action='store_true',
-                        help='use imagenet pre-train model')
+    parser.add_argument('--pattern-feature', type=str, default='conv-512x1x1',
+                        help='the feature to contrast [conv-512x1x1, fc-4096]')
+    parser.add_argument('--prediction', action='store_true',
+                        help='use MLP prediction')
+
     parser.add_argument('--lr', type=float, default=1e-5,
                         help='the initial learning rate')
+    parser.add_argument('--weight-decay', type=float, default=1e-4,
+                        help='the weight decay')
     parser.add_argument('--momentum', type=float, default=0.9,
                         help='the momentum')
 
@@ -50,7 +56,7 @@ def parse_args():
     parser.add_argument('--num-workers', type=int, default=8,
                         help='the num of training process')
 
-    parser.add_argument('--crop-size', type=int, default=256,
+    parser.add_argument('--crop-size', type=int, default=224,
                         help='the crop size of the train image')
 
     parser.add_argument('--visual-num', type=int, default=4,
@@ -63,6 +69,9 @@ if __name__ == '__main__':
     args = parse_args()
     torch.backends.cudnn.benchmark = True
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device.strip('-')  # set vis gpu
-    trainer = CoTrainer(args)
+    if args.SimSiam:
+        trainer = SimSiamTrainer(args)
+    else:
+        trainer = CoTrainer(args)
     trainer.setup()
     trainer.train()
