@@ -5,21 +5,12 @@ from PIL import Image
 import numpy as np
 
 import torch
+import torchvision
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 
 np.random.seed(765)
 random.seed(765)
-
-train_transform = transforms.Compose([transforms.Resize(64),
-                        transforms.RandomResizedCrop(scale=(0.16, 1), ratio=(0.75, 1.33), size=64),
-                        transforms.RandomHorizontalFlip(0.5),
-                        transforms.ToTensor(),
-                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-
-val_transform = transforms.Compose([transforms.Resize(64),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
 class SupervisedPosNegCifar10(torch.utils.data.Dataset):
     def __init__(self, dataset, phase):
@@ -28,11 +19,23 @@ class SupervisedPosNegCifar10(torch.utils.data.Dataset):
         self.anchors, self.posnegs = torch.utils.data.random_split(dataset, lengths)
         
         if phase == 'train':
-            self.anchor_transform = train_transform
-            self.posneg_transform = train_transform
+            self.anchor_transform = transforms.Compose([transforms.Resize(64),
+                        transforms.RandomResizedCrop(scale=(0.16, 1), ratio=(0.75, 1.33), size=64),
+                        transforms.RandomHorizontalFlip(0.5),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+            self.posneg_transform = transforms.Compose([transforms.Resize(64),
+                        transforms.RandomResizedCrop(scale=(0.16, 1), ratio=(0.75, 1.33), size=64),
+                        transforms.RandomHorizontalFlip(0.5),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         else:
-            self.anchor_transform = val_transform
-            self.posneg_transform = val_transform
+            self.anchor_transform = transforms.Compose([transforms.Resize(64),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+            self.posneg_transform = transforms.Compose([transforms.Resize(64),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     def __len__(self):
         return len(self.anchors)
@@ -65,11 +68,23 @@ class PosNegCifar10(torch.utils.data.Dataset):
         self.dataset = dataset
         
         if phase == 'train':
-            self.anchor_transform = train_transform
-            self.posneg_transform = train_transform
+            self.anchor_transform = transforms.Compose([transforms.Resize(64),
+                        transforms.RandomResizedCrop(scale=(0.16, 1), ratio=(0.75, 1.33), size=64),
+                        transforms.RandomHorizontalFlip(0.5),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+            self.posneg_transform = transforms.Compose([transforms.Resize(64),
+                        transforms.RandomResizedCrop(scale=(0.16, 1), ratio=(0.75, 1.33), size=64),
+                        transforms.RandomHorizontalFlip(0.5),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         else:
-            self.anchor_transform = val_transform
-            self.posneg_transform = val_transform
+            self.anchor_transform = transforms.Compose([transforms.Resize(64),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+            self.posneg_transform = transforms.Compose([transforms.Resize(64),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     def __len__(self):
         return len(self.dataset)
@@ -96,3 +111,73 @@ class PosNegCifar10(torch.utils.data.Dataset):
             posneg = self.posneg_transform(posneg)
 
         return anchor, posneg, target, label
+
+### Simple Siamese code
+
+imagenet_mean_std = [[0.485, 0.456, 0.406],[0.229, 0.224, 0.225]]
+
+class SimSiamTransform():
+    def __init__(self, image_size, train, mean_std=imagenet_mean_std):
+        self.train = train
+        if self.train:
+            image_size = 224 if image_size is None else image_size # by default simsiam use image size 224
+            p_blur = 0.5 if image_size > 32 else 0 # exclude cifar
+            # the paper didn't specify this, feel free to change this value
+            # I use the setting from simclr which is 50% chance applying the gaussian blur
+            # the 32 is prepared for cifar training where they disabled gaussian blur
+            self.transform = transforms.Compose([
+                transforms.RandomResizedCrop(image_size, scale=(0.2, 1.0)),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomApply([transforms.ColorJitter(0.4,0.4,0.4,0.1)], p=0.8),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=image_size//20*2+1, sigma=(0.1, 2.0))], p=p_blur),
+                transforms.ToTensor(),
+                transforms.Normalize(*mean_std)
+            ])
+
+        else:
+            self.transform = transforms.Compose([
+                transforms.Resize(int(image_size*(8/7)), interpolation=Image.BICUBIC), # 224 -> 256 
+                transforms.CenterCrop(image_size),
+                transforms.ToTensor(),
+                transforms.Normalize(*mean_std)
+            ])
+
+    def __call__(self, x):
+        x1 = self.transform(x)
+        x2 = self.transform(x)
+        return x1, x2 
+
+
+def get_simsiam_dataset(args, phase, download=True, debug_subset_size=None):
+    if phase == 'train':
+        train = True
+        transform = SimSiamTransform(args.crop_size, train)
+    elif phase == 'val':
+        train = False
+        transform = SimSiamTransform(args.crop_size, train)
+    elif phase == 'linear_train':
+        train = True
+        transform = transforms.Compose([
+                transforms.RandomResizedCrop(args.crop_size, scale=(0.08, 1.0), ratio=(3.0/4.0,4.0/3.0), interpolation=Image.BICUBIC),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(*imagenet_mean_std)
+            ])
+    elif phase == 'linear_val':
+        train = False
+        transform = transforms.Compose([
+                transforms.Resize(int(args.crop_size*(8/7)), interpolation=Image.BICUBIC), # 224 -> 256 
+                transforms.CenterCrop(args.crop_size),
+                transforms.ToTensor(),
+                transforms.Normalize(*imagenet_mean_std)
+            ])
+
+    dataset = torchvision.datasets.CIFAR10(root="CIFAR10_Dataset", train=train, transform=transform, download=download)
+
+    if debug_subset_size is not None:
+        dataset = torch.utils.data.Subset(dataset, range(0, debug_subset_size)) # take only one batch
+        dataset.classes = dataset.dataset.classes
+        dataset.targets = dataset.dataset.targets
+
+    return dataset

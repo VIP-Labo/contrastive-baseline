@@ -12,20 +12,21 @@ from torch.utils.data import DataLoader
 import torchvision.models as models
 import torchvision.datasets as datasets
 
-from models.siamese_net import SiameseNetwork
-from models.l2_contrastive_loss import L2ContrastiveLoss
+from models.simple_siamese_net import SiameseNetwork
+from models.cosine_contrastive_loss import CosineContrastiveLoss
 from utils.trainer import Trainer
 from utils.helper import Save_Handle, AverageMeter, worker_init_fn
-from utils.visualizer import ImageDisplayer, EmbeddingDisplayer
+from utils.visualizer import ImageDisplayer, LossGraphPloter
 from datasets.spatial import SpatialDataset
-from datasets.cifar10 import PosNegCifar10
+from datasets.cifar10 import PosNegCifar10, get_simsiam_dataset
 
-class CoTrainer(Trainer):
+class SimSiamTrainer(Trainer):
     def setup(self):
         """initialize the datasets, model, loss and optimizer"""
         args = self.args
         self.vis = ImageDisplayer(args, self.save_dir)
-        self.emb = EmbeddingDisplayer(args, self.save_dir)
+        self.tr_graph = LossGraphPloter(self.save_dir)
+        self.vl_graph = LossGraphPloter(self.save_dir)
         
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -35,13 +36,8 @@ class CoTrainer(Trainer):
             raise Exception("gpu is not available")
 
         if args.cifar10:
-            # Download and create datasets
-            or_train = datasets.CIFAR10(root="CIFAR10_Dataset", train=True, transform=None, download=True)
-            or_val = datasets.CIFAR10(root="CIFAR10_Dataset", train=False, transform=None, download=True)
+            self.datasets = {x: get_simsiam_dataset(args, x) for x in ['train', 'val']}           
 
-            # splits CIFAR10 into two streams
-            self.datasets = {x: PosNegCifar10((or_train if x == 'train' else or_val),
-                                              phase=x) for x in ['train', 'val']}
         else:
             self.datasets = {x: SpatialDataset(os.path.join(args.data_dir, x),
                                             args.crop_size,
@@ -56,15 +52,16 @@ class CoTrainer(Trainer):
                                         worker_init_fn=worker_init_fn) for x in ['train', 'val']}
 
         # Define model, loss, optim
-        self.model = SiameseNetwork(models.__dict__[args.arch], pattern_feature = args.pattern_feature)
+        self.model = SiameseNetwork(args)
         self.model.to(self.device)
 
-        self.criterion = L2ContrastiveLoss(args.margin)
+        self.criterion = CosineContrastiveLoss()
         self.criterion.to(self.device)
 
         self.optimizer = optim.SGD(self.model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
-        self.scheduler = lr_scheduler.MultiStepLR(self.optimizer, milestones=[80, 120, 160, 200, 250], gamma=0.1)
+        #self.scheduler = lr_scheduler.MultiStepLR(self.optimizer, milestones=[80, 120, 160, 200, 250], gamma=0.1)
+        self.scheduler = lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=args.max_epoch)
 
         self.start_epoch = 0
         self.best_loss = np.inf
@@ -95,14 +92,13 @@ class CoTrainer(Trainer):
         epoch_start = time.time()
         self.model.train()  # Set model to training mode
 
-        for step, (input1, input2, target, label) in enumerate(self.dataloaders['train']):
+        for step, ((input1, input2), label) in enumerate(self.dataloaders['train']):
             input1 = input1.to(self.device)
             input2 = input2.to(self.device)
-            target = target.to(self.device)
 
             with torch.set_grad_enabled(True):
-                output1, output2 = self.model(input1, input2)
-                loss = self.criterion(output1, output2, target)
+                (z1, z2), (p1, p2) = self.model(input1, input2)
+                loss = self.criterion(z1, z2, p1, p2)
                 epoch_loss.update(loss.item(), input1.size(0))
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -111,11 +107,13 @@ class CoTrainer(Trainer):
 
             # visualize
             if step == 0:
-                self.vis(epoch, 'train', input1, input2, target)
-                self.emb(output1, label, epoch, 'train')
+                self.vis(epoch, 'train', input1, input2, label)
+                pass
 
-        logging.info('Epoch {} Train, Loss: {:.5f}, Cost {:.1f} sec'
-                     .format(self.epoch, epoch_loss.get_avg(), time.time()-epoch_start))
+        logging.info('Epoch {} Train, Loss: {:.5f}, lr: {:.5f}, Cost {:.1f} sec'
+                     .format(self.epoch, epoch_loss.get_avg(), self.optimizer.param_groups[0]['lr'], time.time()-epoch_start))
+        
+        self.tr_graph(self.epoch, epoch_loss.get_avg(), 'tr')
 
         model_state_dic = self.model.state_dict()
         save_path = os.path.join(self.save_dir, '{}_ckpt.tar'.format(self.epoch))
@@ -131,22 +129,24 @@ class CoTrainer(Trainer):
         self.model.eval()  # Set model to evaluate mode
         epoch_loss = AverageMeter()
 
-        for step, (input1, input2, target, label) in enumerate(self.dataloaders['val']):
+        for step, ((input1, input2), label) in enumerate(self.dataloaders['val']):
             input1 = input1.to(self.device)
             input2 = input2.to(self.device)
-            target = target.to(self.device)
+
             with torch.set_grad_enabled(False):
-                output1, output2 = self.model(input1, input2)
-                loss = self.criterion(output1, output2, target)
+                (z1, z2), (p1, p2) = self.model(input1, input2)
+                loss = self.criterion(z1, z2, p1, p2)
                 epoch_loss.update(loss.item(), input1.size(0))
 
             # visualize
             if step == 0:
-                self.vis(epoch, 'val', input1, input2, target)
-                self.emb(output1, label, epoch, 'val')
+                self.vis(epoch, 'val', input1, input2, label)
+                pass
 
         logging.info('Epoch {} Val, Loss: {:.5f}, Cost {:.1f} sec'
                      .format(self.epoch, epoch_loss.get_avg(), time.time()-epoch_start))
+
+        self.vl_graph(self.epoch, epoch_loss.get_avg(), 'vl')
 
         model_state_dic = self.model.state_dict()
         if self.best_loss > epoch_loss.get_avg():

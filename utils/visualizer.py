@@ -2,6 +2,8 @@ import os
 import numpy as np
 from PIL import Image
 
+import torch
+
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
@@ -24,6 +26,7 @@ class ImageDisplayer:
         self.save_dir = save_fir
         self.N = args.visual_num
 
+    @torch.no_grad()
     def __call__(self, epoch, prefix, img1, img2, target):
         imgs1 = []
         imgs2 = []
@@ -50,11 +53,11 @@ class ImageDisplayer:
             im2 = Image.fromarray(np.uint8(im2*255))
 
             plt.subplot(self.N, 2, i)
-            plt.title('Positive' if tar == 1 else 'Negative', fontsize=20) 
+            plt.title(tar, fontsize=20) 
             plt.imshow(im1)
             i += 1
             plt.subplot(self.N, 2, i)
-            plt.title('Positive' if tar == 1 else 'Negative', fontsize=20) 
+            plt.title(tar, fontsize=20) 
             plt.imshow(im2)
             i += 1
         
@@ -73,6 +76,7 @@ class EmbeddingDisplayer:
               '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
               '#bcbd22', '#17becf']
 
+    @torch.no_grad()
     def __call__(self, embeddings, targets, epoch, prefix, xlim=None, ylim=None):
         embeddings = embeddings.to('cpu').detach().numpy().copy()
         targets = targets.to('cpu').detach().numpy().copy()
@@ -89,3 +93,53 @@ class EmbeddingDisplayer:
         plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
         plt.close()
 
+class LossGraphPloter:
+    def __init__(self, save_fir):
+        self.save_dir = save_fir
+        self.epochs = []
+        self.losses = []
+
+    def __call__(self, epoch, loss, prefix):
+        self.epochs.append(epoch)
+        self.losses.append(loss)
+        output_img_name = '{}_loss.svg'.format(prefix)
+
+        plt.plot(self.epochs, self.losses)
+        plt.title('Loss')
+        plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
+        plt.close()
+
+class AccLossGraphPloter:
+    def __init__(self, save_fir):
+        self.save_dir = save_fir
+        self.tr_accs = []
+        self.vl_accs = []
+        self.tr_losses = []
+        self.vl_losses = []
+        self.epochs = []
+
+    def __call__(self, epoch, tr_acc, vl_acc, tr_loss, vl_loss, prefix):
+        self.tr_accs.append(tr_acc)
+        self.vl_accs.append(vl_acc)
+        self.tr_losses.append(tr_loss)
+        self.vl_losses.append(vl_loss)
+
+        self.epochs.append(epoch)
+        output_img_name = '{}_eval.svg'.format(prefix)
+
+        fig, (axL, axR) = plt.subplots(ncols=2, figsize=(10,4))
+
+        axL.plot(self.epochs, self.tr_accs, label='train')
+        axL.plot(self.epochs, self.vl_accs, label='val')
+        axL.set_title('Top-1 Accuracy')
+        axL.set_xlabel('epoch')
+        axL.set_ylabel('acc [%]')
+
+        axR.plot(self.epochs, self.tr_losses, label='train')
+        axR.plot(self.epochs, self.vl_losses, label='val')
+        axR.set_title('Loss')
+        axR.set_xlabel('epoch')
+        axR.set_ylabel('loss')
+
+        plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
+        plt.close()
