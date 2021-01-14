@@ -93,14 +93,13 @@ class EmbeddingDisplayer:
         plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
         plt.close()
 
-class GraphPloter:
-    def __init__(self, args, save_fir, prefix):
-        self.args = args
+class LossGraphPloter:
+    def __init__(self, save_fir):
         self.save_dir = save_fir
         self.epochs = []
         self.losses = []
 
-    def __call__(self, epoch, loss):
+    def __call__(self, epoch, loss, prefix):
         self.epochs.append(epoch)
         self.losses.append(loss)
         output_img_name = '{}_loss.svg'.format(prefix)
@@ -110,3 +109,37 @@ class GraphPloter:
         plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
         plt.close()
 
+class AccLossGraphPloter:
+    def __init__(self, save_fir):
+        self.save_dir = save_fir
+        self.tr_accs = []
+        self.vl_accs = []
+        self.tr_losses = []
+        self.vl_losses = []
+        self.epochs = []
+
+    def __call__(self, epoch, tr_acc, vl_acc, tr_loss, vl_loss, prefix):
+        self.tr_accs.append(tr_acc)
+        self.vl_accs.append(vl_acc)
+        self.tr_losses.append(tr_loss)
+        self.vl_losses.append(vl_loss)
+
+        self.epochs.append(epoch)
+        output_img_name = '{}_eval.svg'.format(prefix)
+
+        fig, (axL, axR) = plt.subplots(ncols=2, figsize=(10,4))
+
+        axL.plot(self.epochs, self.tr_accs, label='train')
+        axL.plot(self.epochs, self.vl_accs, label='val')
+        axL.set_title('Top-1 Accuracy')
+        axL.set_xlabel('epoch')
+        axL.set_ylabel('acc [%]')
+
+        axR.plot(self.epochs, self.tr_losses, label='train')
+        axR.plot(self.epochs, self.vl_losses, label='val')
+        axR.set_title('Loss')
+        axR.set_xlabel('epoch')
+        axR.set_ylabel('loss')
+
+        plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
+        plt.close()

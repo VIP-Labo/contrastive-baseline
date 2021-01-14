@@ -16,7 +16,7 @@ from models.simple_siamese_net import SiameseNetwork
 from models.cosine_contrastive_loss import CosineContrastiveLoss
 from utils.trainer import Trainer
 from utils.helper import Save_Handle, AverageMeter, worker_init_fn
-from utils.visualizer import ImageDisplayer, GraphPloter
+from utils.visualizer import ImageDisplayer, LossGraphPloter
 from datasets.spatial import SpatialDataset
 from datasets.cifar10 import PosNegCifar10, get_simsiam_dataset
 
@@ -25,8 +25,8 @@ class SimSiamTrainer(Trainer):
         """initialize the datasets, model, loss and optimizer"""
         args = self.args
         self.vis = ImageDisplayer(args, self.save_dir)
-        self.tr_graph = GraphPloter(args, self.save_dir)
-        self.vl_graph = GraphPloter(args, self.save_dir)
+        self.tr_graph = LossGraphPloter(self.save_dir)
+        self.vl_graph = LossGraphPloter(self.save_dir)
         
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -52,7 +52,7 @@ class SimSiamTrainer(Trainer):
                                         worker_init_fn=worker_init_fn) for x in ['train', 'val']}
 
         # Define model, loss, optim
-        self.model = SiameseNetwork(models.__dict__[args.arch], pattern_feature=args.pattern_feature, prediction=args.prediction)
+        self.model = SiameseNetwork(args)
         self.model.to(self.device)
 
         self.criterion = CosineContrastiveLoss()

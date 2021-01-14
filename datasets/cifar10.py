@@ -153,9 +153,25 @@ def get_simsiam_dataset(args, phase, download=True, debug_subset_size=None):
     if phase == 'train':
         train = True
         transform = SimSiamTransform(args.crop_size, train)
-    else:
+    elif phase == 'val':
         train = False
         transform = SimSiamTransform(args.crop_size, train)
+    elif phase == 'linear_train':
+        train = True
+        transform = transforms.Compose([
+                transforms.RandomResizedCrop(args.crop_size, scale=(0.08, 1.0), ratio=(3.0/4.0,4.0/3.0), interpolation=Image.BICUBIC),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(*imagenet_mean_std)
+            ])
+    elif phase == 'linear_val':
+        train = False
+        transform = transforms.Compose([
+                transforms.Resize(int(args.crop_size*(8/7)), interpolation=Image.BICUBIC), # 224 -> 256 
+                transforms.CenterCrop(args.crop_size),
+                transforms.ToTensor(),
+                transforms.Normalize(*imagenet_mean_std)
+            ])
 
     dataset = torchvision.datasets.CIFAR10(root="CIFAR10_Dataset", train=train, transform=transform, download=download)
 
@@ -163,4 +179,5 @@ def get_simsiam_dataset(args, phase, download=True, debug_subset_size=None):
         dataset = torch.utils.data.Subset(dataset, range(0, debug_subset_size)) # take only one batch
         dataset.classes = dataset.dataset.classes
         dataset.targets = dataset.dataset.targets
+
     return dataset

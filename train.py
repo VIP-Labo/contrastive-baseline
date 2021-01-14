@@ -19,13 +19,15 @@ def parse_args():
                         help='try Simple Siamese Net')                 
 
     parser.add_argument('--arch', type=str, default='vgg19',
-                        help='the model architecture')
+                        help='the model architecture [vgg19, vgg19_bn, resnet18]')
     parser.add_argument('--pattern-feature', type=str, default='conv-512x1x1',
                         help='the feature to contrast [conv-512x1x1, fc-4096]')
+    parser.add_argument('--projection', action='store_true',
+                        help='use MLP projection')
     parser.add_argument('--prediction', action='store_true',
                         help='use MLP prediction')
 
-    parser.add_argument('--lr', type=float, default=1e-5,
+    parser.add_argument('--lr', type=float, default=1e-2,
                         help='the initial learning rate')
     parser.add_argument('--weight-decay', type=float, default=1e-4,
                         help='the weight decay')
