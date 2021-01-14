@@ -134,12 +134,14 @@ class AccLossGraphPloter:
         axL.set_title('Top-1 Accuracy')
         axL.set_xlabel('epoch')
         axL.set_ylabel('acc [%]')
+        axL.legend(loc="lower right")
 
         axR.plot(self.epochs, self.tr_losses, label='train')
         axR.plot(self.epochs, self.vl_losses, label='val')
         axR.set_title('Loss')
         axR.set_xlabel('epoch')
         axR.set_ylabel('loss')
+        axR.legend(loc="upper right")
 
         plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
         plt.close()

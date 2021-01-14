@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 import torchvision.models as models
 
@@ -24,9 +25,9 @@ def parse_args():
     parser.add_argument('--arch', default='vgg19', help='model architecture')
 
     parser.add_argument('--max-epoch', default=100, help='train epoch')
-    parser.add_argument('--crop-size', default=224, help='input size')
+    parser.add_argument('--crop-size', default=224, type=int, help='input size')
     parser.add_argument('--batch-size', default=512, type=int, help='input size')
-    parser.add_argument('--lr', default=1e-1, help='learning rate')
+    parser.add_argument('--lr', default=1e-2, help='learning rate')
     parser.add_argument('--momentum', default=0.9, help='momentum')
 
     args = parser.parse_args()
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     datasets = {x: get_simsiam_dataset(args, x) for x in ['linear_train', 'linear_val']}
 
     dataloaders = {x: DataLoader(datasets[x],
-                                batch_size=(args.batch_size if x == 'linear_train' else 1),
+                                batch_size=(args.batch_size),
                                 shuffle=(True if x == 'linear_train' else False),
                                 num_workers=8,
                                 pin_memory=(True if x == 'linear_train' else False)) for x in ['linear_train', 'linear_val']}
@@ -53,6 +54,7 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()
 
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[40, 60, 80], gamma=0.1)
 
     ## Training & Test Roop
     model.to(device)
@@ -69,6 +71,7 @@ if __name__ == '__main__':
             loss.backward()
             losses += loss.item()
             optimizer.step()
+            scheduler.step()
 
             pred = F.softmax(logits, dim=-1).max(-1)[1]
             acc += pred.eq(target).sum().item()
