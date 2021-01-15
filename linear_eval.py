@@ -37,7 +37,7 @@ if __name__ == '__main__':
     args = parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device.strip()  # set vis gpu
     plotter = AccLossGraphPloter(args.save_dir)
-    setlogger(os.path.join(self.save_dir, 'eval.log'))  # set logger
+    setlogger(os.path.join(args.save_dir, 'eval.log'))  # set logger
 
     datasets = {x: get_simsiam_dataset(args, x) for x in ['linear_train', 'linear_val']}
 
