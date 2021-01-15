@@ -26,6 +26,8 @@ def parse_args():
                         help='use MLP projection')
     parser.add_argument('--prediction', action='store_true',
                         help='use MLP prediction')
+    parser.add_argument('--mlp-bn', action='store_true',
+                        help='use MLP Batch Normalization')                        
 
     parser.add_argument('--lr', type=float, default=1e-2,
                         help='the initial learning rate')

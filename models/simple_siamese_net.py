@@ -66,19 +66,19 @@ class SiameseNetwork(nn.Module):
         if args.pattern_feature == 'conv-512x1x1':
             if args.arch == 'resnet18':
                 self.encoder = nn.Sequential(*list(m.children())[:-1])
-                self.bn = True
+                self.bn = args.mlp_bn
 
             if args.arch == 'vgg19_bn':
                 features = m.features
                 max_pool = nn.AdaptiveAvgPool2d((1,1))
                 self.encoder = nn.Sequential(features, max_pool)
-                self.bn = True
+                self.bn = args.mlp_bn
 
             if args.arch == 'vgg19':
                 features = m.features
                 max_pool = nn.AdaptiveAvgPool2d((1,1))
                 self.encoder = nn.Sequential(features, max_pool)
-                self.bn = False
+                self.bn = args.mlp_bn
 
             if self.projection:
                 self.projector = projection_MLP(bn=self.bn, in_dim=512, hidden_dim=512, out_dim=512)

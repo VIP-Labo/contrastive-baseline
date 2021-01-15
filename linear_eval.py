@@ -19,7 +19,7 @@ args = None
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Test ')
-    parser.add_argument('--save-dir', default='/mnt/hdd02/contrastive-learn/0113-193048 (vgg not BN not projector))',
+    parser.add_argument('--save-dir', default='/mnt/hdd02/contrastive-learn/0113-193048',
                         help='model directory')
     parser.add_argument('--device', default='0', help='assign device')
     parser.add_argument('--arch', default='vgg19', help='model architecture')
