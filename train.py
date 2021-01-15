@@ -10,7 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train ')
     parser.add_argument('--data-dir', default='/mnt/hdd02/process-ucf',
                         help='training data directory')
-    parser.add_argument('--save-dir', default='/mnt/hdd02/contrastive-learn',
+    parser.add_argument('--save-dir', default='D:/exp_results',
                         help='directory to save models.')
     parser.add_argument('--cifar10', action='store_true',
                         help='use cifar10 dataset')

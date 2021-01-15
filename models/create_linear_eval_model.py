@@ -11,6 +11,8 @@ class LinearEvalModel(nn.Module):
 
         if arch == 'vgg19':
             self.features = models.vgg19().features
+        if arch == 'vgg19_bn':
+            self.features = models.vgg19_bn().features
         elif arch == 'resnet18':
             resnet18 = models.resnet18(pretrained=False)
             self.features = nn.Sequential(*list(resnet18.children())[:-1])
