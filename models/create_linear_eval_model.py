@@ -11,6 +11,8 @@ class LinearEvalModel(nn.Module):
 
         if arch == 'vgg19':
             self.features = models.vgg19().features
+        if arch == 'vgg19_bn':
+            self.features = models.vgg19_bn().features
         elif arch == 'resnet18':
             resnet18 = models.resnet18(pretrained=False)
             self.features = nn.Sequential(*list(resnet18.children())[:-1])
@@ -19,15 +21,24 @@ class LinearEvalModel(nn.Module):
 
         self.fc = nn.Linear(dim, num_classes)
 
-    def weight_init(self, weight_path, device):
+    def weight_init(self, weight_path, device, arch):
         state_dict = torch.load(os.path.join(weight_path, 'best_model.pth'), device)
         new_state_dict = OrderedDict()
-        for k, v in state_dict.items():
-            if 'encoder' in k:
-                k = k.replace('encoder.0.', '')
-                new_state_dict[k] = v
-        
-        self.features.load_state_dict(new_state_dict)
+
+        if 'resnet' in arch:
+            for k, v in state_dict.items():
+                if 'encoder' in k:
+                    k = k.replace('encoder.', '')
+                    new_state_dict[k] = v
+
+            self.features.load_state_dict(new_state_dict)
+        elif 'vgg' in arch:
+            for k, v in state_dict.items():
+                if 'encoder' in k:
+                    k = k.replace('encoder.0.', '')
+                    new_state_dict[k] = v
+
+            self.features.load_state_dict(new_state_dict)
 
         for m in self.features.parameters():
             m.requires_grad = False

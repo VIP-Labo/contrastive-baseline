@@ -10,7 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train ')
     parser.add_argument('--data-dir', default='/mnt/hdd02/process-ucf',
                         help='training data directory')
-    parser.add_argument('--save-dir', default='/mnt/hdd02/contrastive-learn',
+    parser.add_argument('--save-dir', default='D:/exp_results',
                         help='directory to save models.')
     parser.add_argument('--cifar10', action='store_true',
                         help='use cifar10 dataset')
@@ -34,7 +34,9 @@ def parse_args():
     parser.add_argument('--momentum', type=float, default=0.9,
                         help='the momentum')
 
-    parser.add_argument('--div-num', type=int, default=3,
+    parser.add_argument('--div-row', type=int, default=3,
+                    help='one side`s number of pathes')
+    parser.add_argument('--div-col', type=int, default=3,
                     help='one side`s number of pathes')
     parser.add_argument('--aug', action='store_true',
                         help='the weight decay')
@@ -43,8 +45,11 @@ def parse_args():
 
     parser.add_argument('--resume', default='',
                         help='the path of resume training model')
-    parser.add_argument('--max-model-num', type=int, default=1,
+    parser.add_argument('--max-model-num', type=int, default=30,
                         help='max models num to save ')
+    parser.add_argument('--check_point', type=int, default=100,
+                        help='milestone of save model checkpoint')
+
     parser.add_argument('--max-epoch', type=int, default=300,
                         help='max training epoch')
     parser.add_argument('--val-epoch', type=int, default=10,

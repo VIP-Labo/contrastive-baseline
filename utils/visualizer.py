@@ -34,7 +34,10 @@ class ImageDisplayer:
         for n in range(self.N):
             imgs1.append(invnorm(img1,n))
             imgs2.append(invnorm(img2,n))
-            targets.append(target[n].item())
+            if target is not None:
+                targets.append(target[n].item())
+            else:
+                targets = None
 
         self.display_images(epoch, prefix, imgs1, imgs2, targets)
 
@@ -48,18 +51,30 @@ class ImageDisplayer:
         height = max(height, int(len(images1)/columns) * height)
         plt.figure(figsize=(width, height))
         i = 1
-        for (im1, im2, tar) in zip(images1, images2, targets):
-            im1 = Image.fromarray(np.uint8(im1*255))
-            im2 = Image.fromarray(np.uint8(im2*255))
+        if targets is not None:
+            for (im1, im2, tar) in zip(images1, images2, targets):
+                im1 = Image.fromarray(np.uint8(im1*255))
+                im2 = Image.fromarray(np.uint8(im2*255))
 
-            plt.subplot(self.N, 2, i)
-            plt.title(tar, fontsize=20) 
-            plt.imshow(im1)
-            i += 1
-            plt.subplot(self.N, 2, i)
-            plt.title(tar, fontsize=20) 
-            plt.imshow(im2)
-            i += 1
+                plt.subplot(self.N, 2, i)
+                plt.title(tar, fontsize=20) 
+                plt.imshow(im1)
+                i += 1
+                plt.subplot(self.N, 2, i)
+                plt.title(tar, fontsize=20) 
+                plt.imshow(im2)
+                i += 1
+        else:
+            for (im1, im2) in zip(images1, images2):
+                im1 = Image.fromarray(np.uint8(im1*255))
+                im2 = Image.fromarray(np.uint8(im2*255))
+
+                plt.subplot(self.N, 2, i)
+                plt.imshow(im1)
+                i += 1
+                plt.subplot(self.N, 2, i) 
+                plt.imshow(im2)
+                i += 1
         
         plt.tight_layout()
         output_img_name = 'imgs_{}_{}.png'.format(prefix, epoch)
@@ -134,12 +149,14 @@ class AccLossGraphPloter:
         axL.set_title('Top-1 Accuracy')
         axL.set_xlabel('epoch')
         axL.set_ylabel('acc [%]')
+        axL.legend(loc="lower right")
 
         axR.plot(self.epochs, self.tr_losses, label='train')
         axR.plot(self.epochs, self.vl_losses, label='val')
         axR.set_title('Loss')
         axR.set_xlabel('epoch')
         axR.set_ylabel('loss')
+        axR.legend(loc="upper right")
 
         plt.savefig(os.path.join(self.save_dir, 'images', output_img_name))
         plt.close()

@@ -39,9 +39,10 @@ class SimSiamTrainer(Trainer):
             self.datasets = {x: get_simsiam_dataset(args, x) for x in ['train', 'val']}           
 
         else:
-            self.datasets = {x: SpatialDataset(os.path.join(args.data_dir, x),
+            self.datasets = {x: SpatialDataset(x,
+                                            args.data_dir,
                                             args.crop_size,
-                                            args.div_num,
+                                            (args.div_row, args.div_col),
                                             args.aug) for x in ['train', 'val']}
 
         self.dataloaders = {x: DataLoader(self.datasets[x],
@@ -115,14 +116,15 @@ class SimSiamTrainer(Trainer):
         
         self.tr_graph(self.epoch, epoch_loss.get_avg(), 'tr')
 
-        model_state_dic = self.model.state_dict()
-        save_path = os.path.join(self.save_dir, '{}_ckpt.tar'.format(self.epoch))
-        torch.save({
-            'epoch': self.epoch,
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'model_state_dict': model_state_dic
-        }, save_path)
-        self.save_list.append(save_path)  # control the number of saved models
+        if epoch % self.args.check_point == 0:
+            model_state_dic = self.model.state_dict()
+            save_path = os.path.join(self.save_dir, '{}_ckpt.tar'.format(self.epoch))
+            torch.save({
+                'epoch': self.epoch,
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'model_state_dict': model_state_dic
+            }, save_path)
+            self.save_list.append(save_path)  # control the number of saved models
 
     def val_epoch(self, epoch):
         epoch_start = time.time()
