@@ -24,11 +24,11 @@ def parse_args():
     parser.add_argument('--device', default='0', help='assign device')
     parser.add_argument('--arch', default='vgg19', help='model architecture')
 
-    parser.add_argument('--max-epoch', default=100, help='train epoch')
+    parser.add_argument('--max-epoch', default=100, type=int, help='train epoch')
     parser.add_argument('--crop-size', default=224, type=int, help='input size')
     parser.add_argument('--batch-size', default=512, type=int, help='input size')
-    parser.add_argument('--lr', default=1e-2, help='learning rate')
-    parser.add_argument('--momentum', default=0.9, help='momentum')
+    parser.add_argument('--lr', default=1e-1, type=float, help='learning rate')
+    parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 
     args = parser.parse_args()
     return args
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     device = torch.device('cuda')
 
     model = LinearEvalModel(arch=args.arch)
-    model.weight_init(args.save_dir, device) ## initialize & freeze
+    model.weight_init(args.save_dir, device, args.arch) ## initialize & freeze
 
     criterion = nn.CrossEntropyLoss()
 
