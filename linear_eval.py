@@ -15,7 +15,6 @@ from utils.visualizer import AccLossGraphPloter
 
 args = None
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Test ')
     parser.add_argument('--save-dir', default='/mnt/hdd02/contrastive-learn/0113-193048 (vgg not BN not projector))',
