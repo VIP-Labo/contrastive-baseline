@@ -115,14 +115,15 @@ class SimSiamTrainer(Trainer):
         
         self.tr_graph(self.epoch, epoch_loss.get_avg(), 'tr')
 
-        model_state_dic = self.model.state_dict()
-        save_path = os.path.join(self.save_dir, '{}_ckpt.tar'.format(self.epoch))
-        torch.save({
-            'epoch': self.epoch,
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'model_state_dict': model_state_dic
-        }, save_path)
-        self.save_list.append(save_path)  # control the number of saved models
+        if epoch % self.args.check_point == 0:
+            model_state_dic = self.model.state_dict()
+            save_path = os.path.join(self.save_dir, '{}_ckpt.tar'.format(self.epoch))
+            torch.save({
+                'epoch': self.epoch,
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'model_state_dict': model_state_dic
+            }, save_path)
+            self.save_list.append(save_path)  # control the number of saved models
 
     def val_epoch(self, epoch):
         epoch_start = time.time()

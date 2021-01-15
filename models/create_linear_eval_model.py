@@ -26,7 +26,7 @@ class LinearEvalModel(nn.Module):
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             if 'encoder' in k:
-                k = k.replace('encoder.0.', '')
+                k = k.replace('encoder.', '')
                 new_state_dict[k] = v
         
         self.features.load_state_dict(new_state_dict)

@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('--max-epoch', default=100, help='train epoch')
     parser.add_argument('--crop-size', default=224, type=int, help='input size')
     parser.add_argument('--batch-size', default=512, type=int, help='input size')
-    parser.add_argument('--lr', default=1e-2, help='learning rate')
+    parser.add_argument('--lr', default=1e-2, type=float, help='learning rate')
     parser.add_argument('--momentum', default=0.9, help='momentum')
 
     args = parser.parse_args()

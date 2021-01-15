@@ -43,8 +43,11 @@ def parse_args():
 
     parser.add_argument('--resume', default='',
                         help='the path of resume training model')
-    parser.add_argument('--max-model-num', type=int, default=1,
+    parser.add_argument('--max-model-num', type=int, default=10,
                         help='max models num to save ')
+    parser.add_argument('--check_point', type=int, default=100,
+                        help='milestone of save model checkpoint')
+
     parser.add_argument('--max-epoch', type=int, default=300,
                         help='max training epoch')
     parser.add_argument('--val-epoch', type=int, default=10,
