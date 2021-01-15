@@ -18,16 +18,16 @@ from torchvision import transforms
 
 random.seed(765)
 
-def equally_divide_patches(img, divide_num):
-    patche_size_w = int(img.size[0] / divide_num) 
-    patche_size_h = int(img.size[1] / divide_num)
+def divide_patches(img, row, col):
+    patche_size_w = int(img.size[0] / col) 
+    patche_size_h = int(img.size[1] / row)
 
     patches = []
     for cnt_i, i in enumerate(range(0, img.size[1], patche_size_h)):
-        if cnt_i == divide_num:
+        if cnt_i == row:
             break
         for cnt_j, j in enumerate(range(0, img.size[0], patche_size_w)):
-            if cnt_j == divide_num:
+            if cnt_j == col:
                 break
             box = (j, i, j+patche_size_w, i+patche_size_h)
             patches.append(img.crop(box))
@@ -48,6 +48,13 @@ def create_neg_pair(patches):
     target = np.array([0])
     return img1, img2, target
 
+def random_crop(im_h, im_w, crop_h, crop_w):
+    res_h = im_h - crop_h
+    res_w = im_w - crop_w
+    i = random.randint(0, res_h)
+    j = random.randint(0, res_w)
+    return i, j, crop_h, crop_w
+
 class GaussianBlur(object):
     """Gaussian blur augmentation in SimCLR https://arxiv.org/abs/2002.05709"""
 
@@ -59,14 +66,15 @@ class GaussianBlur(object):
         x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
         return x
 
-class SpatialDataset(data.Dataset):
+class PosNegSpatialDataset(data.Dataset):
     # divide_num : 3 -> 3x3= 9 paches
-    def __init__(self, data_path, crop_size, divide_num=3, aug=True):
+    def __init__(self, data_path, crop_size, divide_num=(3,3), aug=True):
         self.data_path = data_path
         self.im_list = sorted(glob(os.path.join(self.data_path, '*.jpg')))
 
         self.c_size = crop_size
-        self.d_num = divide_num
+        self.d_row = divide_num[0]
+        self.d_col = divide_num[1]
 
         if aug:
             self.aug = transforms.Compose([
@@ -90,7 +98,7 @@ class SpatialDataset(data.Dataset):
     def __getitem__(self, index):
         img_path = self.im_list[index]
         img = Image.open(img_path).convert('RGB')
-        patches = equally_divide_patches(img, self.d_num)
+        patches = divide_patches(img, self.d_row, self.d_col)
 
         if random.random() > 0.5:
             img1, img2, target = create_pos_pair(patches)
@@ -106,3 +114,49 @@ class SpatialDataset(data.Dataset):
         img2 = self.trans(img2)
 
         return img1, img2, target, None
+
+class SpatialDataset(data.Dataset):
+    # divide_num : 3 -> 3x3= 9 paches
+    def __init__(self, phase, data_path, crop_size, divide_num=(3,3), aug=True):
+        
+        with open(os.path.join(data_path, '{}.txt'.format(phase)), 'r') as f:
+            im_list = f.readlines()
+
+        self.im_list = [im_name.replace('\n', '') for im_name in im_list]
+
+        self.c_size = crop_size
+        self.d_row = divide_num[0]
+        self.d_col = divide_num[1]
+
+        self.trans = transforms.Compose([
+            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+            transforms.RandomGrayscale(p=0.2),
+            transforms.RandomApply([GaussianBlur([.1, 2.])], p=0.5),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+
+    def __len__(self):
+        return len(self.im_list)
+
+    def __getitem__(self, index):
+        img_path = self.im_list[index]
+        img = Image.open(img_path).convert('RGB')
+        patches = divide_patches(img, self.d_row, self.d_col)
+
+        img1, img2, label = create_pos_pair(patches)
+
+        assert img1.size == img2.size
+        wd, ht = img1.size
+        i, j, h, w = random_crop(ht, wd, self.c_size, self.c_size)
+        img1 = F.crop(img1, i, j, h, w)
+        img2 = F.crop(img2, i, j, h, w)
+
+        img1 = self.trans(img1)
+        img2 = self.trans(img2)
+
+        imgs = (img1, img2)
+
+        return imgs, label

@@ -19,16 +19,16 @@ img = torch.rand(1,3,256,256)
 out = crop(img)
 print(out.size())
 
-def equally_divide_patches(img, divide_num):
-    patche_size_w = int(img.size[0] / divide_num) 
-    patche_size_h = int(img.size[1] / divide_num)
+def divide_patches(img, row, col):
+    patche_size_w = int(img.size[0] / col) 
+    patche_size_h = int(img.size[1] / row)
 
     patches = []
     for cnt_i, i in enumerate(range(0, img.size[1], patche_size_h)):
-        if cnt_i == divide_num:
+        if cnt_i == row:
             break
         for cnt_j, j in enumerate(range(0, img.size[0], patche_size_w)):
-            if cnt_j == divide_num:
+            if cnt_j == col:
                 break
             box = (j, i, j+patche_size_w, i+patche_size_h)
             patches.append(img.crop(box))
@@ -37,7 +37,7 @@ def equally_divide_patches(img, divide_num):
 
 def display_images(
     images: [Image], 
-    columns=3, width=20, height=8, max_images=15, 
+    row=3, col=3, width=10, height=4, max_images=15, 
     label_wrap_length=50, label_font_size=8):
 
     if not images:
@@ -48,21 +48,21 @@ def display_images(
         print(f"Showing {max_images} images of {len(images)}:")
         images=images[0:max_images]
 
-    height = max(height, int(len(images)/columns) * height)
+    height = max(height, int(len(images)/col) * height)
     plt.figure(figsize=(width, height))
     for i, image in enumerate(images):
 
-        plt.subplot(3, 3, i + 1)
+        plt.subplot(row, col, i + 1)
         plt.imshow(image)
 
     plt.show()
 
-image = Image.open("/mnt/hdd02/ShanghaiTech/part_A/train_data/images/IMG_7.jpg").convert("RGB")
+image = Image.open("/mnt/hdd02/shibuya_scramble/image_000294.jpg").convert("RGB")
 
-p = equally_divide_patches(image, 3)
+p = divide_patches(image, 2, 3)
 print(len(p))
 
-display_images(p)
+display_images(p, row=2, col=3)
 
 def create_pos_pair(patches):
     idx = random.randint(0, len(patches)-1)
@@ -79,7 +79,7 @@ def create_neg_pair(patches):
     return img1, img2, label
 
 def get_img(img):
-    patches = equally_divide_patches(img, 3)
+    patches = divide_patches(img, 3, 2)
 
     if random.random() > 0.5:
         img1, img2, label = create_pos_pair(patches)

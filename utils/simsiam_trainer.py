@@ -39,9 +39,10 @@ class SimSiamTrainer(Trainer):
             self.datasets = {x: get_simsiam_dataset(args, x) for x in ['train', 'val']}           
 
         else:
-            self.datasets = {x: SpatialDataset(os.path.join(args.data_dir, x),
+            self.datasets = {x: SpatialDataset(x,
+                                            args.data_dir,
                                             args.crop_size,
-                                            args.div_num,
+                                            (args.div_row, args.div_col),
                                             args.aug) for x in ['train', 'val']}
 
         self.dataloaders = {x: DataLoader(self.datasets[x],

@@ -34,7 +34,9 @@ def parse_args():
     parser.add_argument('--momentum', type=float, default=0.9,
                         help='the momentum')
 
-    parser.add_argument('--div-num', type=int, default=3,
+    parser.add_argument('--div-row', type=int, default=3,
+                    help='one side`s number of pathes')
+    parser.add_argument('--div-col', type=int, default=3,
                     help='one side`s number of pathes')
     parser.add_argument('--aug', action='store_true',
                         help='the weight decay')
@@ -43,7 +45,7 @@ def parse_args():
 
     parser.add_argument('--resume', default='',
                         help='the path of resume training model')
-    parser.add_argument('--max-model-num', type=int, default=10,
+    parser.add_argument('--max-model-num', type=int, default=30,
                         help='max models num to save ')
     parser.add_argument('--check_point', type=int, default=100,
                         help='milestone of save model checkpoint')
