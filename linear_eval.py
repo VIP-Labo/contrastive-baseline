@@ -1,5 +1,6 @@
 import os
 import argparse
+import logging
 import numpy as np
 
 import torch
@@ -82,7 +83,7 @@ if __name__ == '__main__':
 
         tr_loss = losses / step
         tr_acc = acc / total * 100.
-        print('[Train Epoch: {0:2d}], loss: {1:.3f}, acc: {2:.3f}'.format(epoch, tr_loss, tr_acc))
+        logging.info('[Train Epoch: {0:2d}], loss: {1:.3f}, acc: {2:.3f}'.format(epoch, tr_loss, tr_acc))
         
         model.eval()
         losses, acc, step, total = 0., 0., 0., 0.
@@ -102,6 +103,6 @@ if __name__ == '__main__':
             
             vl_loss = losses / step
             vl_acc = acc / total * 100.
-            print('[Test Epoch: {0:2d}], loss: {1:.3f} acc: {2:.2f}'.format(epoch, vl_loss, vl_acc))
+            logging.info('[Test Epoch: {0:2d}], loss: {1:.3f} acc: {2:.2f}'.format(epoch, vl_loss, vl_acc))
 
         plotter(epoch, tr_acc, vl_acc, tr_loss, vl_loss, args.arch)
