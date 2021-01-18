@@ -55,6 +55,7 @@ class SimSiamTrainer(Trainer):
         # Define model, loss, optim
         self.model = SiameseNetwork(args)
         self.model.to(self.device)
+        print(self.model)
 
         self.criterion = CosineContrastiveLoss()
         self.criterion.to(self.device)

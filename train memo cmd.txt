@@ -1,1 +1,1 @@
-python train.py --data-dir /mnt/hdd02/shibuya_scramble --save-dir /mnt/hdd02/contrastive-learn --SimSiam --arch vgg19_bn --projection --prediction --div-row 2 --div-col 3 --max-epoch 1000 --batch-size 64 --crop-size 224 --aug
+python train.py --data-dir /mnt/hdd02/shibuya_scramble --save-dir /mnt/hdd02/contrastive-learn --SimSiam --arch vgg19 --projection --prediction --div-row 2 --div-col 3 --max-epoch 1000 --batch-size 64 --crop-size 224 --aug --mlp-bn
