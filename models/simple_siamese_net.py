@@ -61,7 +61,7 @@ class SiameseNetwork(nn.Module):
         super(SiameseNetwork, self).__init__()
         self.projection = args.projection
         self.prediction = args.prediction
-        m = models.__dict__[args.arch]()
+        m = models.__dict__[args.arch](args.imagenet)
 
         if args.pattern_feature == 'conv-512x1x1':
             if args.arch == 'resnet18':

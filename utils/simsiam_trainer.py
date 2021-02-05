@@ -108,7 +108,7 @@ class SimSiamTrainer(Trainer):
                 self.scheduler.step()
 
             # visualize
-            if step == 0:
+            if epoch % 10 == 0 and step == 0:
                 self.vis(epoch, 'train', input1, input2, label)
                 pass
 
@@ -142,7 +142,7 @@ class SimSiamTrainer(Trainer):
                 epoch_loss.update(loss.item(), input1.size(0))
 
             # visualize
-            if step == 0:
+            if epoch % 10 == 0 and step == 0:
                 self.vis(epoch, 'val', input1, input2, label)
                 pass
 

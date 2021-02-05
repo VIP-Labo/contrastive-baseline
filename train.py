@@ -27,7 +27,9 @@ def parse_args():
     parser.add_argument('--prediction', action='store_true',
                         help='use MLP prediction')
     parser.add_argument('--mlp-bn', action='store_true',
-                        help='use MLP Batch Normalization')                        
+                        help='use MLP Batch Normalization')
+    parser.add_argument('--imagenet', action='store_true',
+                        help='use Imagenet pre-trained model')                
 
     parser.add_argument('--lr', type=float, default=1e-2,
                         help='the initial learning rate')
@@ -36,7 +38,7 @@ def parse_args():
     parser.add_argument('--momentum', type=float, default=0.9,
                         help='the momentum')
 
-    parser.add_argument('--div-row', type=int, default=3,
+    parser.add_argument('--div-row', type=int, default=2,
                     help='one side`s number of pathes')
     parser.add_argument('--div-col', type=int, default=3,
                     help='one side`s number of pathes')
@@ -52,7 +54,7 @@ def parse_args():
     parser.add_argument('--check_point', type=int, default=100,
                         help='milestone of save model checkpoint')
 
-    parser.add_argument('--max-epoch', type=int, default=300,
+    parser.add_argument('--max-epoch', type=int, default=501,
                         help='max training epoch')
     parser.add_argument('--val-epoch', type=int, default=10,
                         help='the num of steps to log training information')
